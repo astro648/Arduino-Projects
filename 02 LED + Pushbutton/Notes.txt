@@ -1,0 +1,1 @@
+This project turns the LED on when the pushbutton is pressed. The point of the 1k-Ohm resistor connecting the button to GND is a pull-down resistor, setting the button's default state to LOW so it won't get stuck in between states. The LED uses a 220-Ohm resistor to prevent burnout. This project is based on the LED Breathing circuit (01).
