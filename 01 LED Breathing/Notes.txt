@@ -1,0 +1,1 @@
+This project makes the LED Breathing effect by using a for loop and PWM / simulated analog output on the digital pin the LED is connected to. The LED smoothly goes from low to high then back down to low on a loop. 
