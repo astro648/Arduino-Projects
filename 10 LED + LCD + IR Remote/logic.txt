@@ -1,7 +1,0 @@
-1. Receive signals from remote, find the code for each button (#define ...)
-2. Assign functions for each button / signal
-- Button 1: Power off all LEDs
-- Button 2: Toggle LED 1
-- Button 3: Toggle LED 2
-- Button FUNC/STOP: Power off everything (LED off, LCD clear, break program)
-- Everything else: Print not recognized
