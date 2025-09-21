@@ -3,7 +3,7 @@ const uint8_t PASSCODE[] = {0, 1, 2};
 
 constexpr size_t BUTTON_COUNT = sizeof(buttonPins) / sizeof(buttonPins[0]);
 constexpr size_t PASSCODE_LENGTH = sizeof(PASSCODE) / sizeof(PASSCODE[0]);
-constexpr bool ENABLE_DEBUG = false;
+constexpr bool ENABLE_DEBUG = true;
 
 const uint8_t redLedPin = 5;
 const uint8_t greenLedPin = 6;
@@ -40,14 +40,13 @@ void playShortBeep();
 void playUnlockPattern();
 void playErrorTone();
 void playToneBlocking(uint16_t freq, unsigned long durationMs);
-void logButtonState(const char *label, uint8_t buttonIndex, int raw, int stable);
 void logMessage(const char *message);
 
 void setup() {
   for (size_t i = 0; i < BUTTON_COUNT; i++) {
-    pinMode(buttonPins[i], INPUT);
-    prevRaw[i] = LOW;
-    stableState[i] = LOW;
+    pinMode(buttonPins[i], INPUT_PULLUP);
+    prevRaw[i] = HIGH;
+    stableState[i] = HIGH;
     consumed[i] = false;
   }
 
@@ -81,18 +80,12 @@ void loop() {
     if (raw != prevRaw[i]) {
       prevRaw[i] = raw;
       lastChangeMillis[i] = now;
-      if (ENABLE_DEBUG) {
-        logButtonState("raw change", static_cast<uint8_t>(i), raw, stableState[i]);
-      }
     }
 
     if ((now - lastChangeMillis[i]) >= DEBOUNCE_MS && raw != stableState[i]) {
       stableState[i] = raw;
-      if (ENABLE_DEBUG) {
-        logButtonState("stable", static_cast<uint8_t>(i), raw, stableState[i]);
-      }
 
-      if (stableState[i] == HIGH) {
+      if (stableState[i] == LOW) {
         if (!consumed[i]) {
           consumed[i] = true;
           handlePress(static_cast<uint8_t>(i), now);
@@ -190,15 +183,6 @@ void playUnlockPattern() {
 
 void playErrorTone() {
   playToneBlocking(ERROR_FREQ, ERROR_TONE_MS);
-}
-
-void logButtonState(const char *label, uint8_t buttonIndex, int raw, int stable) {
-  if (!ENABLE_DEBUG) {
-    return;
-  }
-  char buffer[64];
-  snprintf(buffer, sizeof(buffer), "%s b%u raw=%d stable=%d", label, buttonIndex, raw, stable);
-  Serial.println(buffer);
 }
 
 void logMessage(const char *message) {
