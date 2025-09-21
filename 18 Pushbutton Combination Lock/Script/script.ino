@@ -3,6 +3,7 @@ const uint8_t PASSCODE[] = {0, 1, 2};
 
 constexpr size_t BUTTON_COUNT = sizeof(buttonPins) / sizeof(buttonPins[0]);
 constexpr size_t PASSCODE_LENGTH = sizeof(PASSCODE) / sizeof(PASSCODE[0]);
+constexpr bool ENABLE_DEBUG = false;
 
 const uint8_t redLedPin = 5;
 const uint8_t greenLedPin = 6;
@@ -39,6 +40,8 @@ void playShortBeep();
 void playUnlockPattern();
 void playErrorTone();
 void playToneBlocking(uint16_t freq, unsigned long durationMs);
+void logButtonState(const char *label, uint8_t buttonIndex, int raw, int stable);
+void logMessage(const char *message);
 
 void setup() {
   for (size_t i = 0; i < BUTTON_COUNT; i++) {
@@ -56,6 +59,12 @@ void setup() {
   digitalWrite(greenLedPin, LOW);
   digitalWrite(buzzerPin, LOW);
 
+  if (ENABLE_DEBUG) {
+    Serial.begin(115200);
+    delay(5);
+    logMessage("Lock ready");
+  }
+
   unsigned long start = millis();
   lastPressMillis = start;
   for (size_t i = 0; i < BUTTON_COUNT; i++) {
@@ -72,10 +81,16 @@ void loop() {
     if (raw != prevRaw[i]) {
       prevRaw[i] = raw;
       lastChangeMillis[i] = now;
+      if (ENABLE_DEBUG) {
+        logButtonState("raw change", static_cast<uint8_t>(i), raw, stableState[i]);
+      }
     }
 
     if ((now - lastChangeMillis[i]) >= DEBOUNCE_MS && raw != stableState[i]) {
       stableState[i] = raw;
+      if (ENABLE_DEBUG) {
+        logButtonState("stable", static_cast<uint8_t>(i), raw, stableState[i]);
+      }
 
       if (stableState[i] == HIGH) {
         if (!consumed[i]) {
@@ -91,20 +106,35 @@ void loop() {
   if (greenUntil != 0 && (long)(now - greenUntil) >= 0) {
     digitalWrite(greenLedPin, LOW);
     greenUntil = 0;
+    if (ENABLE_DEBUG) {
+      logMessage("green off");
+    }
   }
 
   if (redUntil != 0 && (long)(now - redUntil) >= 0) {
     digitalWrite(redLedPin, LOW);
     redUntil = 0;
+    if (ENABLE_DEBUG) {
+      logMessage("red off");
+    }
   }
 
   if (idx > 0 && (now - lastPressMillis) >= INACTIVITY_RESET_MS) {
     idx = 0;
+    if (ENABLE_DEBUG) {
+      logMessage("passcode reset due to inactivity");
+    }
   }
 }
 
 void handlePress(uint8_t press, unsigned long now) {
   lastPressMillis = now;
+
+  if (ENABLE_DEBUG) {
+    char buffer[48];
+    snprintf(buffer, sizeof(buffer), "press %u vs expected %u", press, (idx < PASSCODE_LENGTH) ? PASSCODE[idx] : 255);
+    logMessage(buffer);
+  }
 
   if (idx < PASSCODE_LENGTH && press == PASSCODE[idx]) {
     playShortBeep();
@@ -119,6 +149,10 @@ void handlePress(uint8_t press, unsigned long now) {
 
       playUnlockPattern();
       idx = 0;
+
+      if (ENABLE_DEBUG) {
+        logMessage("unlock success");
+      }
     }
   } else {
     idx = 0;
@@ -130,6 +164,10 @@ void handlePress(uint8_t press, unsigned long now) {
     redUntil = now + RED_ON_MS;
 
     playErrorTone();
+
+    if (ENABLE_DEBUG) {
+      logMessage("wrong button");
+    }
   }
 }
 
@@ -152,4 +190,20 @@ void playUnlockPattern() {
 
 void playErrorTone() {
   playToneBlocking(ERROR_FREQ, ERROR_TONE_MS);
+}
+
+void logButtonState(const char *label, uint8_t buttonIndex, int raw, int stable) {
+  if (!ENABLE_DEBUG) {
+    return;
+  }
+  char buffer[64];
+  snprintf(buffer, sizeof(buffer), "%s b%u raw=%d stable=%d", label, buttonIndex, raw, stable);
+  Serial.println(buffer);
+}
+
+void logMessage(const char *message) {
+  if (!ENABLE_DEBUG) {
+    return;
+  }
+  Serial.println(message);
 }
